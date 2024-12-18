@@ -1,0 +1,22 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  An integration for the NXP MPR121 capacitive touch sensor.
+
+  Example definition in devicetree:
+
+    mpr121 {
+        compatible = "zephyr,mpr121";
+        int-gpios = <&gpio0 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+    };
+
+compatible: "zephyr,mpr121"
+
+include: i2c-device.yaml
+
+properties:
+  int-gpio:
+    type: phandle-array
+    required: false
+    description: Interrupt GPIO pin for the MPR121 device
