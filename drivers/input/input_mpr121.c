@@ -640,15 +640,15 @@ static int mpr121_pm_action(const struct device *dev, enum pm_device_action acti
 
 #endif // IS_ENABLED(CONFIG_PM_DEVICE)
 
-// #define MPR121_INST(n)                                                                \
-//     static struct mpr121_data mpr121_data_##n;                                        \
-//     static const struct mpr121_config mpr121_config_##n = {                           \
-//         .bus = {.i2c = I2C_DT_SPEC_INST_GET(n)},                                      \
-//         .seq_read = mpr121_i2c_seq_read,                                              \
-//         .write = mpr121_i2c_write,                                                    \
-//     };                                                                                \
-//     PM_DEVICE_DT_INST_DEFINE(n, mpr121_pm_action);                                    \
-//     DEVICE_DT_INST_DEFINE(n, mpr121_init, PM_DEVICE_DT_INST_GET(n), &mpr121_data_##n, \
+// #define MPR121_INST(n)                                                                
+//     static struct mpr121_data mpr121_data_##n;                                        
+//     static const struct mpr121_config mpr121_config_##n = {                           
+//         .bus = {.i2c = I2C_DT_SPEC_INST_GET(n)},                                      
+//         .seq_read = mpr121_i2c_seq_read,                                              
+//         .write = mpr121_i2c_write,                                                    
+//     };                                                                                
+//     PM_DEVICE_DT_INST_DEFINE(n, mpr121_pm_action);                                    
+//     DEVICE_DT_INST_DEFINE(n, mpr121_init, PM_DEVICE_DT_INST_GET(n), &mpr121_data_##n, 
 //                           &mpr121_config_##n, POST_KERNEL, CONFIG_INPUT_MPR121_INIT_PRIORITY, NULL);
 
 // DT_INST_FOREACH_STATUS_OKAY(MPR121_INST)
