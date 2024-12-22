@@ -207,10 +207,10 @@ static void mpr121_report_data(const struct device *dev)
     const struct mpr121_config *config = dev->config;
     struct mpr121_data *data = dev->data;
         
-    uint8_t touched = mpr1212_get_touched(dev);
+    uint16_t touched = mpr1212_get_touched(dev);
     data->touch_status = touched;
 
-    LOG_HEXDUMP_DBG(touched, 1, "MPR121 Touch Status");
+    LOG_HEXDUMP_DBG(&touched, 1, "MPR121 Touch Status");
     
     // input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
     // input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
