@@ -188,7 +188,7 @@ static int mpr121_era_write(const struct device *dev, const uint16_t addr, uint8
 uint16_t mpr1212_get_touched(const struct device *dev)
 {
     int ret;
-    uint8_t t[2];
+    uint8_t *t;
 
     ret = mpr121_seq_read(dev, MPR121_TOUCHSTATUS_L, &t, 2);
     if (ret < 0)
