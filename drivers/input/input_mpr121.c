@@ -43,18 +43,18 @@ static int mpr121_i2c_write(const struct device *dev, const uint8_t addr, const 
 
 #endif // DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
 
-static int set_int(const struct device *dev, const bool en)
-{
-    const struct mpr121_config *config = dev->config;
-    int ret = gpio_pin_interrupt_configure_dt(&config->dr,
-                                              en ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE);
-    if (ret < 0)
-    {
-        LOG_ERR("can't set interrupt");
-    }
+// static int set_int(const struct device *dev, const bool en)
+// {
+//     const struct mpr121_config *config = dev->config;
+//     int ret = gpio_pin_interrupt_configure_dt(&config->dr,
+//                                               en ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE);
+//     if (ret < 0)
+//     {
+//         LOG_ERR("can't set interrupt");
+//     }
 
-    return ret;
-}
+//     return ret;
+// }
 
 // static int mpr121_clear_status(const struct device *dev)
 // {
@@ -617,15 +617,17 @@ static int mpr121_init(const struct device *dev)
 
 static int mpr121_pm_action(const struct device *dev, enum pm_device_action action)
 {
-    switch (action)
-    {
-    case PM_DEVICE_ACTION_SUSPEND:
-        return set_int(dev, false);
-    case PM_DEVICE_ACTION_RESUME:
-        return set_int(dev, true);
-    default:
-        return -ENOTSUP;
-    }
+    // switch (action)
+    // {
+    // case PM_DEVICE_ACTION_SUSPEND:
+    //     return set_int(dev, false);
+    // case PM_DEVICE_ACTION_RESUME:
+    //     return set_int(dev, true);
+    // default:
+    //     return -ENOTSUP;
+    // }
+
+    return -ENOTSUP;
 }
 
 #endif // IS_ENABLED(CONFIG_PM_DEVICE)
