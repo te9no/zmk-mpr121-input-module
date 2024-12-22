@@ -656,7 +656,7 @@ static int mpr121_pm_action(const struct device *dev, enum pm_device_action acti
 #define MPR121_INST(n)                                                                \
     static struct mpr121_data mpr121_data_##n;                                        \
     static const struct mpr121_config mpr121_config_##n = {                           \
-        .bus = I2C_DT_SPEC_INST_GET(n),                                               \
+        .bus = {.i2c = I2C_DT_SPEC_INST_GET(n)},                                      \
         .seq_read = mpr121_i2c_seq_read,                                              \
         .write = mpr121_i2c_write,                                                    \
     };                                                                                \
