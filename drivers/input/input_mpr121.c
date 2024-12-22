@@ -206,12 +206,12 @@ static void mpr121_report_data(const struct device *dev)
 {
     const struct mpr121_config *config = dev->config;
     struct mpr121_data *data = dev->data;
-        
+
     uint16_t touched = mpr1212_get_touched(dev);
     data->touch_status = touched;
 
     LOG_HEXDUMP_DBG(&touched, 1, "MPR121 Touch Status");
-    
+
     // input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
     // input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
 
@@ -643,10 +643,9 @@ static int mpr121_pm_action(const struct device *dev, enum pm_device_action acti
 #define MPR121_INST(n)                                                                \
     static struct mpr121_data mpr121_data_##n;                                        \
     static const struct mpr121_config mpr121_config_##n = {                           \
-        COND_CODE_1(DT_INST_ON_BUS(n, i2c),                                           \
-                    (.bus = {.i2c = I2C_DT_SPEC_INST_GET(n)},                         \
-                     .seq_read = mpr121_i2c_seq_read,                                 \
-                     .write = mpr121_i2c_write)),                                     \
+        .bus = {.i2c = I2C_DT_SPEC_INST_GET(n)},                                      \
+        .seq_read = mpr121_i2c_seq_read,                                              \
+        .write = mpr121_i2c_write,                                                    \
     };                                                                                \
     PM_DEVICE_DT_INST_DEFINE(n, mpr121_pm_action);                                    \
     DEVICE_DT_INST_DEFINE(n, mpr121_init, PM_DEVICE_DT_INST_GET(n), &mpr121_data_##n, \
