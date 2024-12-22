@@ -205,6 +205,7 @@ uint16_t mpr1212_get_touched(const struct device *dev)
 static void mpr121_report_data(const struct device *dev)
 {
     const struct mpr121_config *config = dev->config;
+    struct mpr121_data *data = dev->data;
         
     uint8_t touched = mpr1212_get_touched(dev);
     data->touch_status = touched;
