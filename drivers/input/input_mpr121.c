@@ -435,9 +435,6 @@ int mpr121_set_thresholds(const struct device *dev, uint8_t touch, uint8_t relea
 {
     int ret = 0;
 
-    writeRegister(, touch);
-    writeRegister(+2 * i, release);
-
     // set all thresholds (the same)
     for (uint8_t i = 0; i < 12; i++)
     {
