@@ -204,7 +204,7 @@ uint16_t mpr1212_get_touched(const struct device *dev)
 
 static void mpr121_report_data(const struct device *dev)
 {
-    const struct mpr121_config *config = dev->config;
+    // const struct mpr121_config *config = dev->config;
     struct mpr121_data *data = dev->data;
 
     uint16_t touched = mpr1212_get_touched(dev);
@@ -458,7 +458,7 @@ int mpr121_set_thresholds(const struct device *dev, uint8_t touch, uint8_t relea
 static int mpr121_init(const struct device *dev)
 {
     struct mpr121_data *data = dev->data;
-    const struct mpr121_config *config = dev->config;
+    // const struct mpr121_config *config = dev->config;
     int ret;
 
     LOG_DBG("Running MPR121 Init");
