@@ -213,6 +213,7 @@ static void mpr121_report_data(const struct device *dev)
 
 static void mpr121_work_cb(struct k_work *work)
 {
+    LOG_DBG("Running mpr121_work_cb");
     struct mpr121_data *data = CONTAINER_OF(work, struct mpr121_data, work);
     mpr121_report_data(data->dev);
 }
@@ -451,6 +452,8 @@ static int mpr121_init(const struct device *dev)
     struct mpr121_data *data = dev->data;
     const struct mpr121_config *config = dev->config;
     int ret;
+
+    LOG_DBG("Running MPR121 Init");
 
     data->in_int = false;
     k_msleep(10);
