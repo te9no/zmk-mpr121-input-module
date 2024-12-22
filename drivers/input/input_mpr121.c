@@ -463,7 +463,7 @@ static int mpr121_init(const struct device *dev)
 
     LOG_DBG("Running MPR121 Init");
 
-    data->in_int = false;
+    // data->in_int = false;
     k_msleep(10);
     ret = mpr121_write(dev, MPR121_SOFTRESET, 0x63); // Soft Reset
     if (ret < 0)
