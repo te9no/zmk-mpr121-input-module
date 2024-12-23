@@ -461,10 +461,12 @@ static int mpr121_init(const struct device *dev)
     // const struct mpr121_config *config = dev->config;
     int ret;
 
+    k_msleep(500);
+
     LOG_INF("Running MPR121 Init");
 
     // data->in_int = false;
-    k_msleep(10);
+    k_msleep(50);
     ret = mpr121_write(dev, MPR121_SOFTRESET, 0x63); // Soft Reset
     if (ret < 0)
     {
