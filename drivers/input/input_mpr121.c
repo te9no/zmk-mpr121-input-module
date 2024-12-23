@@ -461,12 +461,11 @@ static int mpr121_init(const struct device *dev)
     // const struct mpr121_config *config = dev->config;
     int ret;
 
-    k_msleep(1500);
 
     LOG_INF("Running MPR121 Init");
 
     // data->in_int = false;
-    k_msleep(50);
+    k_msleep(10);
     ret = mpr121_write(dev, MPR121_SOFTRESET, 0x63); // Soft Reset
     if (ret < 0)
     {
@@ -664,6 +663,6 @@ static int mpr121_pm_action(const struct device *dev, enum pm_device_action acti
     };                                                                                \
     PM_DEVICE_DT_INST_DEFINE(n, mpr121_pm_action);                                    \
     DEVICE_DT_INST_DEFINE(n, mpr121_init, PM_DEVICE_DT_INST_GET(n), &mpr121_data_##n, \
-                          &mpr121_config_##n, POST_KERNEL, CONFIG_INPUT_MPR121_INIT_PRIORITY, NULL);
+                          &mpr121_config_##n, APPLICATION, CONFIG_INPUT_MPR121_INIT_PRIORITY, NULL);
 
 DT_INST_FOREACH_STATUS_OKAY(MPR121_INST)
