@@ -20,3 +20,8 @@ properties:
     type: phandle-array
     required: false
     description: Interrupt GPIO pin for the MPR121 device
+
+  keymap:
+    type: array
+    required: false
+    description: Array of key codes to be reported for each electrode

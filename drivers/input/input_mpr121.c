@@ -43,141 +43,6 @@ static int mpr121_i2c_write(const struct device *dev, const uint8_t addr, const 
 
 #endif // DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
 
-/*
-static int set_int(const struct device *dev, const bool en)
-{
-    const struct mpr121_config *config = dev->config;
-    int ret = gpio_pin_interrupt_configure_dt(&config->dr,
-                                              en ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE);
-    if (ret < 0)
-    {
-        LOG_ERR("can't set interrupt");
-    }
-
-    return ret;
-}
-
-static int mpr121_clear_status(const struct device *dev)
-{
-    int ret = mpr121_write(dev, MPR121_STATUS1, 0);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to clear STATUS1 register: %d", ret);
-    }
-
-    return ret;
-}
-
-static int mpr121_era_read(const struct device *dev, const uint16_t addr, uint8_t *val)
-{
-    int ret;
-
-    set_int(dev, false);
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_HIGH_BYTE, (uint8_t)(addr >> 8));
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA high byte (%d)", ret);
-        return -EIO;
-    }
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_LOW_BYTE, (uint8_t)(addr & 0x00FF));
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA low byte (%d)", ret);
-        return -EIO;
-    }
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_CONTROL, MPR121_ERA_CONTROL_READ);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA control (%d)", ret);
-        return -EIO;
-    }
-
-    uint8_t control_val;
-    do
-    {
-
-        ret = mpr121_seq_read(dev, MPR121_REG_ERA_CONTROL, &control_val, 1);
-        if (ret < 0)
-        {
-            LOG_ERR("Failed to read ERA control (%d)", ret);
-            return -EIO;
-        }
-
-    } while (control_val != 0x00);
-
-    ret = mpr121_seq_read(dev, MPR121_REG_ERA_VALUE, val, 1);
-
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to read ERA value (%d)", ret);
-        return -EIO;
-    }
-
-    ret = mpr121_clear_status(dev);
-
-    set_int(dev, true);
-
-    return ret;
-}
-
-static int mpr121_era_write(const struct device *dev, const uint16_t addr, uint8_t val)
-{
-    int ret;
-
-    set_int(dev, false);
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_VALUE, val);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA value (%d)", ret);
-        return -EIO;
-    }
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_HIGH_BYTE, (uint8_t)(addr >> 8));
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA high byte (%d)", ret);
-        return -EIO;
-    }
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_LOW_BYTE, (uint8_t)(addr & 0x00FF));
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA low byte (%d)", ret);
-        return -EIO;
-    }
-
-    ret = mpr121_write(dev, MPR121_REG_ERA_CONTROL, MPR121_ERA_CONTROL_WRITE);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write ERA control (%d)", ret);
-        return -EIO;
-    }
-
-    uint8_t control_val;
-    do
-    {
-
-        ret = mpr121_seq_read(dev, MPR121_REG_ERA_CONTROL, &control_val, 1);
-        if (ret < 0)
-        {
-            LOG_ERR("Failed to read ERA control (%d)", ret);
-            return -EIO;
-        }
-
-    } while (control_val != 0x00);
-
-    ret = mpr121_clear_status(dev);
-
-    set_int(dev, true);
-
-    return ret;
-}
-*/
-
 /**
  *  @brief      Read the touch status of all 13 channels as bit values in a 12
  * bit integer.
@@ -202,20 +67,70 @@ uint16_t mpr1212_get_touched(const struct device *dev)
     return ui16 & 0x0FFF;
 }
 
+struct slide_detector {
+    uint16_t start_pad;
+    uint32_t start_time;
+    bool is_sliding;
+};
+
+static void detect_slide(const struct device *dev, uint16_t touched, uint16_t changed, struct slide_detector *slide) {
+    if (!slide->is_sliding) {
+        // スライド開始検出
+        if (changed && touched) {
+            slide->start_pad = (uint16_t)(31 - __builtin_clz(touched));
+            slide->start_time = k_uptime_get_32();
+            slide->is_sliding = true;
+        }
+    } else {
+        uint32_t current_time = k_uptime_get_32();
+        
+        if (touched) {
+            uint16_t current_pad = (uint16_t)(31 - __builtin_clz(touched));
+            // スライド検出 (200ms以内の移動を検出)
+            if ((current_time - slide->start_time) < 200) {
+                int8_t direction = 0;
+                if (current_pad > slide->start_pad) {
+                    direction = 1; // 右方向
+                } else if (current_pad < slide->start_pad) {
+                    direction = -1; // 左方向
+                }
+                
+                if (direction != 0) {
+                    // スライドイベントを報告
+                    input_report_key(dev, INPUT_KEY_SLIDE_RIGHT + (direction < 0), 1, true, K_FOREVER);
+                    input_report_key(dev, INPUT_KEY_SLIDE_RIGHT + (direction < 0), 0, true, K_FOREVER);
+                    slide->is_sliding = false;
+                }
+            }
+        } else {
+            // タッチが離れたらスライド検出をリセット
+            slide->is_sliding = false;
+        }
+    }
+}
+
 static void mpr121_report_data(const struct device *dev)
 {
-    // const struct mpr121_config *config = dev->config;
     struct mpr121_data *data = dev->data;
-
     uint16_t touched = mpr1212_get_touched(dev);
+    uint16_t changed = touched ^ data->touch_status;
+    static struct slide_detector slide = {0};
+    
+    LOG_DBG("Touch status: %04x (changed: %04x)", touched, changed);
+
+    // スライド検出
+    detect_slide(dev, touched, changed, &slide);
+
+    // 個別のタッチイベントを報告
+    for (int i = 0; i < 12; i++) {
+        if (changed & BIT(i)) {
+            bool is_pressed = touched & BIT(i);
+            input_report_key(dev, INPUT_KEY_0 + i, is_pressed, true, K_FOREVER);
+            LOG_DBG("Key %d %s", i, is_pressed ? "pressed" : "released");
+        }
+    }
+
     data->touch_status = touched;
-
-    LOG_HEXDUMP_DBG(&touched, 1, "MPR121 Touch Status");
-
-    // input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
-    // input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
-
-    return;
 }
 
 static void mpr121_work_cb(struct k_work *work)
@@ -224,154 +139,6 @@ static void mpr121_work_cb(struct k_work *work)
     struct mpr121_data *data = CONTAINER_OF(work, struct mpr121_data, work);
     mpr121_report_data(data->dev);
 }
-
-/*
-
-static void mpr121_gpio_cb(const struct device *port, struct gpio_callback *cb, uint32_t pins)
-{
-    struct mpr121_data *data = CONTAINER_OF(cb, struct mpr121_data, gpio_cb);
-    data->in_int = true;
-    k_work_submit(&data->work);
-}
-
-static int mpr121_adc_sensitivity_reg_value(enum mpr121_sensitivity sensitivity)
-{
-    switch (sensitivity)
-    {
-    case MPR121_SENSITIVITY_1X:
-        return MPR121_TRACKING_ADC_CONFIG_1X;
-    case MPR121_SENSITIVITY_2X:
-        return MPR121_TRACKING_ADC_CONFIG_2X;
-    case MPR121_SENSITIVITY_3X:
-        return MPR121_TRACKING_ADC_CONFIG_3X;
-    case MPR121_SENSITIVITY_4X:
-        return MPR121_TRACKING_ADC_CONFIG_4X;
-    default:
-        return MPR121_TRACKING_ADC_CONFIG_1X;
-    }
-}
-
-static int mpr121_tune_edge_sensitivity(const struct device *dev)
-{
-    const struct mpr121_config *config = dev->config;
-    int ret;
-
-    uint8_t x_val;
-    ret = mpr121_era_read(dev, MPR121_ERA_REG_X_AXIS_WIDE_Z_MIN, &x_val);
-    if (ret < 0)
-    {
-        LOG_WRN("Failed to read X val");
-        return ret;
-    }
-
-    LOG_WRN("X val: %d", x_val);
-
-    uint8_t y_val;
-    ret = mpr121_era_read(dev, MPR121_ERA_REG_Y_AXIS_WIDE_Z_MIN, &y_val);
-    if (ret < 0)
-    {
-        LOG_WRN("Failed to read Y val");
-        return ret;
-    }
-
-    LOG_WRN("Y val: %d", y_val);
-
-    ret = mpr121_era_write(dev, MPR121_ERA_REG_X_AXIS_WIDE_Z_MIN, config->x_axis_z_min);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to set X-Axis Min-Z %d", ret);
-        return ret;
-    }
-    ret = mpr121_era_write(dev, MPR121_ERA_REG_Y_AXIS_WIDE_Z_MIN, config->y_axis_z_min);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to set Y-Axis Min-Z %d", ret);
-        return ret;
-    }
-    return 0;
-}
-
-static int mpr121_set_adc_tracking_sensitivity(const struct device *dev)
-{
-    const struct mpr121_config *config = dev->config;
-
-    uint8_t val;
-    int ret = mpr121_era_read(dev, MPR121_ERA_REG_TRACKING_ADC_CONFIG, &val);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to get ADC sensitivity %d", ret);
-    }
-
-    val &= 0x3F;
-    val |= mpr121_adc_sensitivity_reg_value(config->sensitivity);
-
-    ret = mpr121_era_write(dev, MPR121_ERA_REG_TRACKING_ADC_CONFIG, val);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to set ADC sensitivity %d", ret);
-    }
-    ret = mpr121_era_read(dev, MPR121_ERA_REG_TRACKING_ADC_CONFIG, &val);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to get ADC sensitivity %d", ret);
-    }
-
-    return ret;
-}
-
-static int mpr121_force_recalibrate(const struct device *dev)
-{
-    uint8_t val;
-    int ret = mpr121_seq_read(dev, MPR121_CAL_CFG, &val, 1);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to get cal config %d", ret);
-    }
-
-    val |= 0x01;
-    ret = mpr121_write(dev, MPR121_CAL_CFG, val);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to force calibration %d", ret);
-    }
-
-    do
-    {
-        mpr121_seq_read(dev, MPR121_CAL_CFG, &val, 1);
-    } while (val & 0x01);
-
-    return ret;
-}
-
-int mpr121_set_sleep(const struct device *dev, bool enabled)
-{
-    uint8_t sys_cfg;
-    int ret = mpr121_seq_read(dev, MPR121_SYS_CFG, &sys_cfg, 1);
-    if (ret < 0)
-    {
-        LOG_ERR("can't read sys config %d", ret);
-        return ret;
-    }
-
-    if (((sys_cfg & MPR121_SYS_CFG_EN_SLEEP) != 0) == enabled)
-    {
-        return 0;
-    }
-
-    LOG_DBG("Setting sleep: %s", (enabled ? "on" : "off"));
-    WRITE_BIT(sys_cfg, MPR121_SYS_CFG_EN_SLEEP_BIT, enabled ? 1 : 0);
-
-    ret = mpr121_write(dev, MPR121_SYS_CFG, sys_cfg);
-    if (ret < 0)
-    {
-        LOG_ERR("can't write sleep config %d", ret);
-        return ret;
-    }
-
-    return ret;
-}
-
-*/
 
 int mpr121_get_config(const struct device *dev, uint8_t config1or2)
 {
@@ -651,8 +418,6 @@ static int mpr121_pm_action(const struct device *dev, enum pm_device_action acti
 //     PM_DEVICE_DT_INST_DEFINE(n, mpr121_pm_action);                                    
 //     DEVICE_DT_INST_DEFINE(n, mpr121_init, PM_DEVICE_DT_INST_GET(n), &mpr121_data_##n, 
 //                           &mpr121_config_##n, POST_KERNEL, CONFIG_INPUT_MPR121_INIT_PRIORITY, NULL);
-
-// DT_INST_FOREACH_STATUS_OKAY(MPR121_INST)
 
 #define MPR121_INST(n)                                                                \
     static struct mpr121_data mpr121_data_##n;                                        \

@@ -49,6 +49,9 @@
 
 #define MPR121_SOFTRESET 0x80
 
+#define INPUT_KEY_SLIDE_RIGHT 0x2F0  // スライド右方向
+#define INPUT_KEY_SLIDE_LEFT  0x2F1  // スライド左方向
+
 struct mpr121_data
 {
     uint16_t touch_status;
